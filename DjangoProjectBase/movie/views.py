@@ -2,11 +2,16 @@ from django.shortcuts import render
 from django.http import HttpResponse
 
 from .models import Movie
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib
 import io
 import urllib, base64
+import os
+import numpy as np
 
 def home(request):
     #return HttpResponse('<h1>Welcome to Home Page</h1>')
@@ -123,3 +128,73 @@ def generate_bar_chart(data, xlabel, ylabel):
     buffer.close()
     graphic = base64.b64encode(image_png).decode('utf-8')
     return graphic
+
+def recommendations(request):
+
+    recommended_movie = None
+    similarity_score = None
+    prompt = request.GET.get('prompt')
+
+    if prompt:
+
+        # Cargar la API key de Gemini
+        load_dotenv('../gemini.env')
+
+        client = genai.Client(
+            api_key=os.environ.get('GEMINI_API_KEY')
+        )
+
+        # Generar embedding del prompt
+        response = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=prompt,
+            config=types.EmbedContentConfig(
+                task_type="SEMANTIC_SIMILARITY"
+            )
+        )
+
+        prompt_emb = np.array(
+            response.embeddings[0].values,
+            dtype=np.float32
+        )
+
+        # Función de similitud de coseno
+        def cosine_similarity(a, b):
+
+            return np.dot(a, b) / (
+                np.linalg.norm(a) *
+                np.linalg.norm(b)
+            )
+
+        best_movie = None
+        max_similarity = -1
+
+        # Comparar con todas las películas
+        for movie in Movie.objects.all():
+
+            movie_emb = np.frombuffer(
+                movie.emb,
+                dtype=np.float32
+            )
+
+            similarity = cosine_similarity(
+                prompt_emb,
+                movie_emb
+            )
+
+            if similarity > max_similarity:
+                max_similarity = similarity
+                best_movie = movie
+
+        recommended_movie = best_movie
+        similarity_score = max_similarity
+
+    return render(
+        request,
+        'recommendations.html',
+        {
+            'prompt': prompt,
+            'recommended_movie': recommended_movie,
+            'similarity_score': similarity_score
+        }
+    )

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h1>Movie Recommendations</h1>
+
+    <form action="{% url 'recommendations' %}" method="GET">
+
+        <div class="mb-3">
+
+            <label for="prompt" class="form-label">
+                Describe the movie you would like to watch:
+            </label>
+
+            <input
+                type="text"
+                class="form-control"
+                id="prompt"
+                name="prompt"
+                value="{{ prompt|default:'' }}"
+                placeholder="Example: an adventure movie about space"
+                required
+            >
+
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Recommend Movie
+        </button>
+
+    </form>
+
+
+    {% if recommended_movie %}
+
+        <div class="mt-5">
+
+            <h2>Recommended Movie</h2>
+
+            <div class="card" style="max-width: 500px;">
+
+                {% if recommended_movie.image %}
+                    <img
+                        src="{{ recommended_movie.image.url }}"
+                        class="card-img-top"
+                        alt="{{ recommended_movie.title }}"
+                    >
+                {% endif %}
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+                        {{ recommended_movie.title }}
+                    </h5>
+
+                    <p class="card-text">
+                        {{ recommended_movie.description }}
+                    </p>
+
+                    <p class="card-text">
+                        <strong>Similarity:</strong>
+                        {{ similarity_score|floatformat:4 }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock content %}
